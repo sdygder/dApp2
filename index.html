@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Trust Wallet Detector</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: Arial, sans-serif;
+        }
+        
+        body {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+        
+        .container {
+            background: white;
+            border-radius: 20px;
+            padding: 40px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            max-width: 500px;
+            width: 100%;
+            text-align: center;
+        }
+        
+        h1 {
+            color: #333;
+            margin-bottom: 10px;
+            font-size: 28px;
+        }
+        
+        .subtitle {
+            color: #666;
+            margin-bottom: 30px;
+            font-size: 16px;
+        }
+        
+        .status-box {
+            background: #f8f9fa;
+            border-radius: 10px;
+            padding: 20px;
+            margin: 20px 0;
+            border-left: 4px solid #667eea;
+        }
+        
+        .status-item {
+            display: flex;
+            justify-content: space-between;
+            margin: 10px 0;
+            padding: 10px 0;
+            border-bottom: 1px solid #eee;
+        }
+        
+        .status-item:last-child {
+            border-bottom: none;
+        }
+        
+        .label {
+            font-weight: bold;
+            color: #555;
+        }
+        
+        .value {
+            color: #333;
+            font-family: monospace;
+        }
+        
+        .discord-btn {
+            background: #5865F2;
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            border-radius: 10px;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            margin-top: 20px;
+            width: 100%;
+            transition: 0.3s;
+        }
+        
+        .discord-btn:hover {
+            background: #4752C4;
+        }
+        
+        .qr-code {
+            margin: 30px 0;
+            padding: 20px;
+            background: white;
+            border-radius: 10px;
+            display: inline-block;
+        }
+        
+        .instructions {
+            background: #e3f2fd;
+            padding: 15px;
+            border-radius: 10px;
+            margin-top: 20px;
+            text-align: left;
+            font-size: 14px;
+            color: #1976d2;
+        }
+        
+        .instructions ol {
+            margin-left: 20px;
+            margin-top: 10px;
+        }
+        
+        .instructions li {
+            margin: 5px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔐 Trust Wallet Detector</h1>
+        <p class="subtitle">Automatically detects wallet and sends info to Discord</p>
+        
+        <div class="status-box">
+            <div class="status-item">
+                <span class="label">Status:</span>
+                <span class="value" id="status">Checking...</span>
+            </div>
+            <div class="status-item">
+                <span class="label">IP Address:</span>
+                <span class="value" id="ip">Loading...</span>
+            </div>
+            <div class="status-item">
+                <span class="label">Location:</span>
+                <span class="value" id="location">Loading...</span>
+            </div>
+            <div class="status-item">
+                <span class="label">Wallet:</span>
+                <span class="value" id="wallet">Not detected</span>
+            </div>
+        </div>
+        
+        <div class="qr-code">
+            <canvas id="qrcode"></canvas>
+            <p style="margin-top: 10px; color: #666; font-size: 14px;">
+                Scan with Trust Wallet
+            </p>
+        </div>
+        
+        <button class="discord-btn" onclick="connectWallet()">
+            <span id="btn-text">🔗 Connect Trust Wallet</span>
+        </button>
+        
+        <div class="instructions">
+            <strong>How it works:</strong>
+            <ol>
+                <li>Scan QR code with Trust Wallet</li>
+                <li>Click "Connect" to link your wallet</li>
+                <li>Wallet address & IP automatically sent to Discord</li>
+                <li>Data includes: Wallet address, IP, Location, Time</li>
+            </ol>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
+    <script>
+        // Generate QR code for current URL
+        window.onload = function() {
+            const currentUrl = window.location.href;
+            QRCode.toCanvas(document.getElementById('qrcode'), currentUrl, {
+                width: 200,
+                height: 200
+            });
+            
+            // Auto-detect on page load
+            detectUser();
+        };
+        
+        async function detectUser() {
+            try {
+                // Get URL parameters (for when Trust Wallet redirects)
+                const urlParams = new URLSearchParams(window.location.search);
+                const walletAddress = urlParams.get('wallet');
+                
+                // Call detection API
+                const response = await fetch(`/detect?wallet=${walletAddress || ''}`);
+                const data = await response.json();
+                
+                // Update UI
+                document.getElementById('status').textContent = '✅ Detected';
+                document.getElementById('status').style.color = '#28a745';
+                document.getElementById('ip').textContent = data.ip;
+                document.getElementById('location').textContent = data.location;
+                
+                if (data.wallet) {
+                    document.getElementById('wallet').textContent = 
+                        data.wallet.substring(0, 6) + '...' + data.wallet.substring(data.wallet.length - 4);
+                    document.getElementById('btn-text').textContent = '✅ Connected';
+                }
+                
+                if (data.message) {
+                    alert(data.message);
+                }
+                
+            } catch (error) {
+                console.error("Detection failed:", error);
+                document.getElementById('status').textContent = '❌ Error';
+                document.getElementById('status').style.color = '#dc3545';
+            }
+        }
+        
+        async function connectWallet() {
+            if (window.ethereum) {
+                try {
+                    // Request account access
+                    const accounts = await window.ethereum.request({ 
+                        method: 'eth_requestAccounts' 
+                    });
+                    
+                    if (accounts.length > 0) {
+                        // Redirect with wallet address as parameter
+                        window.location.href = `/?wallet=${accounts[0]}`;
+                    }
+                } catch (error) {
+                    alert("Error connecting wallet: " + error.message);
+                }
+            } else {
+                alert("Please install Trust Wallet!");
+            }
+        }
+        
+        // Listen for wallet connection
+        if (window.ethereum) {
+            window.ethereum.on('accountsChanged', (accounts) => {
+                if (accounts.length > 0) {
+                    window.location.href = `/?wallet=${accounts[0]}`;
+                }
+            });
+        }
+    </script>
+</body>
+</html>
